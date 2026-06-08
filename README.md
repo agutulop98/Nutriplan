@@ -8,6 +8,12 @@ npm install
 npm --prefix backend install
 ```
 
+Copy the example env file and fill in your values:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
 Start both frontend and backend together:
 
 ```bash
@@ -28,14 +34,9 @@ npm run dev:backend    # backend only (port 3001)
 ### Seed the database
 
 ```bash
-npm run seed           # initial 8 recipes
-npm --prefix backend run seed:extra   # full 30 recipes + example users
+npm run seed
 ```
 
-### Example users
+### Environment variables
 
-| Email | Password | Role |
-|-------|----------|------|
-| admin@nutriplan.com | admin123 | Admin |
-| maria@example.com | maria123 | User |
-| juan@example.com | juan123 | User |
+See `backend/.env.example` for required variables (`DATABASE_URL`, `JWT_SECRET`, `OPENAI_API_KEY`).

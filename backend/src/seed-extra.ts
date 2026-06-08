@@ -4,9 +4,9 @@ import { migrate } from './migrate';
 import bcrypt from 'bcryptjs';
 
 const users = [
-  { name: 'Admin', email: 'admin@nutriplan.com', password: 'admin123' },
-  { name: 'María García', email: 'maria@ejemplo.com', password: 'maria123' },
-  { name: 'Juan Pérez', email: 'juan@ejemplo.com', password: 'juan123' },
+  { name: 'Admin', email: 'admin@nutriplan.com', password: process.env.ADMIN_PASSWORD || 'admin123' },
+  { name: 'María García', email: 'maria@ejemplo.com', password: process.env.MARIA_PASSWORD || 'maria123' },
+  { name: 'Juan Pérez', email: 'juan@ejemplo.com', password: process.env.JUAN_PASSWORD || 'juan123' },
 ];
 
 const recipes = [

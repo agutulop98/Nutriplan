@@ -91,9 +91,9 @@ async function executeTool(name: string, args: any): Promise<any> {
   if (name === 'get_recipe') {
     const { rows } = await pool.query('SELECT * FROM recipes WHERE id = $1', [Number(args.id)]);
     if (!rows[0]) return { error: 'Receta no encontrada' };
-    const { rows: ings } = await pool.query('SELECT ingredient FROM recipe_ingredients WHERE recipe_id = $1 ORDER BY sort_order', [args.id]);
+    const { rows: ings } = await pool.query('SELECT ingredient, kcal FROM recipe_ingredients WHERE recipe_id = $1 ORDER BY sort_order', [args.id]);
     const { rows: steps } = await pool.query('SELECT description FROM recipe_steps WHERE recipe_id = $1 ORDER BY step_order', [args.id]);
-    return { ...rows[0], ingredients: ings.map((r: any) => r.ingredient), steps: steps.map((r: any) => r.description) };
+    return { ...rows[0], ingredients: ings.map((r: any) => ({ name: r.ingredient, kcal: r.kcal ?? 0 })), steps: steps.map((r: any) => r.description) };
   }
 
   if (name === 'create_recipe') {
@@ -106,8 +106,15 @@ async function executeTool(name: string, args: any): Promise<any> {
         [name, image ?? null, time ?? null, calories ?? null, difficulty ?? null, category ?? null, servings ?? 2]
       );
       const id = result.rows[0].id;
-      for (let i = 0; i < (ingredients as string[]).length; i++) {
-        await client.query('INSERT INTO recipe_ingredients (recipe_id, ingredient, sort_order) VALUES ($1,$2,$3)', [id, ingredients[i], i]);
+      const calcCalories = (ingredients as any[]).reduce((sum: number, ing: any) => sum + (ing.kcal ?? 0), 0);
+      if (calcCalories > 0) {
+        await client.query('UPDATE recipes SET calories = $1 WHERE id = $2', [calcCalories, id]);
+      }
+      for (let i = 0; i < (ingredients as any[]).length; i++) {
+        const ing = ingredients[i];
+        const ingName = typeof ing === 'string' ? ing : ing.name;
+        const ingKcal = typeof ing === 'string' ? 0 : (ing.kcal ?? 0);
+        await client.query('INSERT INTO recipe_ingredients (recipe_id, ingredient, kcal, sort_order) VALUES ($1,$2,$3,$4)', [id, ingName, ingKcal, i]);
       }
       for (let i = 0; i < (steps as string[]).length; i++) {
         await client.query('INSERT INTO recipe_steps (recipe_id, description, step_order) VALUES ($1,$2,$3)', [id, steps[i], i + 1]);

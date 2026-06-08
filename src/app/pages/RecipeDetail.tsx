@@ -8,6 +8,12 @@ import { useApp } from "../context/AppContext";
 const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const MEALS = ["Desayuno", "Comida", "Merienda", "Cena"];
 
+// Color palette for the calorie distribution bars
+const BAR_COLORS = [
+  "bg-orange-500", "bg-blue-500", "bg-green-500", "bg-purple-500",
+  "bg-red-500", "bg-yellow-500", "bg-pink-500", "bg-teal-500",
+];
+
 export function RecipeDetail() {
   const { id } = useParams();
   const { favorites, toggleFavorite } = useApp();
@@ -54,6 +60,8 @@ export function RecipeDetail() {
   }
 
   const isFavorite = favorites.includes(recipe.id);
+  const totalKcal = recipe.ingredients.reduce((sum, i) => sum + (i.kcal ?? 0), 0);
+  const ingsWithKcal = recipe.ingredients.filter(i => i.kcal > 0).sort((a, b) => b.kcal - a.kcal);
 
   const handleToggleFavorite = async () => {
     await toggleFavorite(recipe.id);
@@ -115,20 +123,75 @@ export function RecipeDetail() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <div className="bg-card rounded-xl shadow-sm p-6 border border-border sticky top-8">
-              <h2 className="mb-4">Ingredientes</h2>
+          <div className="lg:col-span-1 space-y-4">
+            {/* Ingredient list */}
+            <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
+              <div className="flex items-center justify-between mb-4">
+                <h2>Ingredientes</h2>
+                {totalKcal > 0 && (
+                  <span className="text-sm font-medium text-primary">{totalKcal} kcal total</span>
+                )}
+              </div>
               <ul className="space-y-3">
                 {recipe.ingredients.map((ingredient, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <div className="w-2 h-2 rounded-full bg-primary" />
                     </div>
-                    <span className="text-foreground">{ingredient}</span>
+                    <div className="flex-1 flex items-center justify-between gap-2 min-w-0">
+                      <span className="text-foreground text-sm">{ingredient.name}</span>
+                      {ingredient.kcal > 0 && (
+                        <span className="text-xs font-medium text-orange-600 bg-orange-50 dark:bg-orange-950/30 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
+                          {ingredient.kcal} kcal
+                        </span>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
             </div>
+
+            {/* Calorie breakdown */}
+            {ingsWithKcal.length > 0 && (
+              <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
+                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-orange-500" />
+                  Distribución calórica
+                </h3>
+
+                {/* Stacked bar */}
+                <div className="flex h-4 rounded-full overflow-hidden mb-4 gap-px">
+                  {ingsWithKcal.map((ing, idx) => (
+                    <div
+                      key={idx}
+                      className={`${BAR_COLORS[idx % BAR_COLORS.length]} transition-all`}
+                      style={{ width: `${Math.round((ing.kcal / totalKcal) * 100)}%` }}
+                      title={`${ing.name}: ${ing.kcal} kcal`}
+                    />
+                  ))}
+                </div>
+
+                {/* Legend */}
+                <div className="space-y-2">
+                  {ingsWithKcal.map((ing, idx) => {
+                    const pct = Math.round((ing.kcal / totalKcal) * 100);
+                    return (
+                      <div key={idx} className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${BAR_COLORS[idx % BAR_COLORS.length]}`} />
+                        <span className="text-xs text-muted-foreground truncate flex-1">
+                          {ing.name.length > 28 ? ing.name.slice(0, 26) + "…" : ing.name}
+                        </span>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-xs font-medium">{ing.kcal}</span>
+                          <span className="text-xs text-muted-foreground">kcal</span>
+                          <span className="text-xs text-muted-foreground w-7 text-right">{pct}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="lg:col-span-2">

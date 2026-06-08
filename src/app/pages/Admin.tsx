@@ -1,15 +1,27 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, Loader2, ChefHat, X, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, ChefHat, X, Check, Flame } from "lucide-react";
 import { toast } from "sonner";
-import { apiFetch, type Recipe } from "../../lib/api";
+import { apiFetch, type Recipe, type Ingredient } from "../../lib/api";
 
 const CATEGORIES = ["Desayuno", "Comida", "Cena", "Snack"];
 const DIFFICULTIES = ["Fácil", "Media", "Difícil"];
 
-const emptyForm = (): Partial<Recipe> & { ingredients: string[]; steps: string[] } => ({
-  name: "", image: "", time: undefined, calories: undefined,
+type FormState = {
+  name: string;
+  image: string;
+  time: number | undefined;
+  difficulty: string;
+  category: string;
+  servings: number | undefined;
+  ingredients: Ingredient[];
+  steps: string[];
+};
+
+const emptyForm = (): FormState => ({
+  name: "", image: "", time: undefined,
   difficulty: "Fácil", category: "Comida", servings: 2,
-  ingredients: [""], steps: [""],
+  ingredients: [{ name: "", kcal: 0 }],
+  steps: [""],
 });
 
 export function Admin() {
@@ -17,7 +29,7 @@ export function Admin() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState(emptyForm());
+  const [form, setForm] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
@@ -39,19 +51,26 @@ export function Admin() {
   const openEdit = (recipe: Recipe) => {
     setEditingId(recipe.id);
     setForm({
-      ...recipe,
-      ingredients: recipe.ingredients.length ? recipe.ingredients : [""],
+      name: recipe.name,
+      image: recipe.image ?? "",
+      time: recipe.time ?? undefined,
+      difficulty: recipe.difficulty ?? "Fácil",
+      category: recipe.category ?? "Comida",
+      servings: recipe.servings ?? 2,
+      ingredients: recipe.ingredients.length ? recipe.ingredients : [{ name: "", kcal: 0 }],
       steps: recipe.steps.length ? recipe.steps : [""],
     });
     setShowForm(true);
   };
+
+  const totalFormKcal = form.ingredients.reduce((sum, i) => sum + (i.kcal || 0), 0);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     const payload = {
       ...form,
-      ingredients: form.ingredients.filter((s) => s.trim()),
+      ingredients: form.ingredients.filter((i) => i.name.trim()),
       steps: form.steps.filter((s) => s.trim()),
     };
     try {
@@ -85,21 +104,31 @@ export function Admin() {
     }
   };
 
-  const updateListItem = (field: "ingredients" | "steps", idx: number, value: string) => {
+  const updateIngredient = (idx: number, field: keyof Ingredient, value: string | number) => {
     setForm((prev) => {
-      const arr = [...prev[field]];
-      arr[idx] = value;
-      return { ...prev, [field]: arr };
+      const arr = [...prev.ingredients];
+      arr[idx] = { ...arr[idx], [field]: value };
+      return { ...prev, ingredients: arr };
     });
   };
 
-  const addListItem = (field: "ingredients" | "steps") => {
-    setForm((prev) => ({ ...prev, [field]: [...prev[field], ""] }));
+  const addIngredient = () => setForm((prev) => ({ ...prev, ingredients: [...prev.ingredients, { name: "", kcal: 0 }] }));
+
+  const removeIngredient = (idx: number) =>
+    setForm((prev) => ({ ...prev, ingredients: prev.ingredients.filter((_, i) => i !== idx) }));
+
+  const updateStep = (idx: number, value: string) => {
+    setForm((prev) => {
+      const arr = [...prev.steps];
+      arr[idx] = value;
+      return { ...prev, steps: arr };
+    });
   };
 
-  const removeListItem = (field: "ingredients" | "steps", idx: number) => {
-    setForm((prev) => ({ ...prev, [field]: prev[field].filter((_, i) => i !== idx) }));
-  };
+  const addStep = () => setForm((prev) => ({ ...prev, steps: [...prev.steps, ""] }));
+
+  const removeStep = (idx: number) =>
+    setForm((prev) => ({ ...prev, steps: prev.steps.filter((_, i) => i !== idx) }));
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -177,20 +206,20 @@ export function Admin() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="text-sm text-muted-foreground mb-1 block">Nombre *</label>
-                  <input value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} required
+                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required
                     className="w-full py-2 px-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
 
                 <div className="md:col-span-2">
                   <label className="text-sm text-muted-foreground mb-1 block">URL de imagen</label>
-                  <input value={form.image ?? ""} onChange={(e) => setForm({ ...form, image: e.target.value })}
+                  <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })}
                     placeholder="https://..."
                     className="w-full py-2 px-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
 
                 <div>
                   <label className="text-sm text-muted-foreground mb-1 block">Categoría</label>
-                  <select value={form.category ?? ""} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
                     className="w-full py-2 px-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary">
                     {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
                   </select>
@@ -198,7 +227,7 @@ export function Admin() {
 
                 <div>
                   <label className="text-sm text-muted-foreground mb-1 block">Dificultad</label>
-                  <select value={form.difficulty ?? ""} onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
+                  <select value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
                     className="w-full py-2 px-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary">
                     {DIFFICULTIES.map((d) => <option key={d}>{d}</option>)}
                   </select>
@@ -207,12 +236,6 @@ export function Admin() {
                 <div>
                   <label className="text-sm text-muted-foreground mb-1 block">Tiempo (min)</label>
                   <input type="number" min={1} value={form.time ?? ""} onChange={(e) => setForm({ ...form, time: Number(e.target.value) || undefined })}
-                    className="w-full py-2 px-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary" />
-                </div>
-
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1 block">Calorías (kcal)</label>
-                  <input type="number" min={1} value={form.calories ?? ""} onChange={(e) => setForm({ ...form, calories: Number(e.target.value) || undefined })}
                     className="w-full py-2 px-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
 
@@ -226,19 +249,43 @@ export function Admin() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm text-muted-foreground">Ingredientes</label>
-                  <button type="button" onClick={() => addListItem("ingredients")} className="text-xs text-primary hover:underline">+ Añadir</button>
+                  <div className="flex items-center gap-3">
+                    {totalFormKcal > 0 && (
+                      <span className="text-xs font-medium text-orange-600 flex items-center gap-1">
+                        <Flame className="w-3 h-3" />
+                        {totalFormKcal} kcal total
+                      </span>
+                    )}
+                    <button type="button" onClick={addIngredient} className="text-xs text-primary hover:underline">+ Añadir</button>
+                  </div>
                 </div>
                 <div className="space-y-2">
+                  <div className="grid grid-cols-[1fr_80px_32px] gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground px-1">Ingrediente</span>
+                    <span className="text-xs text-muted-foreground px-1">kcal</span>
+                    <span />
+                  </div>
                   {form.ingredients.map((ing, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <input value={ing} onChange={(e) => updateListItem("ingredients", idx, e.target.value)}
+                    <div key={idx} className="grid grid-cols-[1fr_80px_32px] gap-2">
+                      <input
+                        value={ing.name}
+                        onChange={(e) => updateIngredient(idx, "name", e.target.value)}
                         placeholder={`Ingrediente ${idx + 1}`}
-                        className="flex-1 py-2 px-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm" />
-                      {form.ingredients.length > 1 && (
-                        <button type="button" onClick={() => removeListItem("ingredients", idx)} className="p-2 text-muted-foreground hover:text-destructive">
+                        className="py-2 px-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        value={ing.kcal || ""}
+                        onChange={(e) => updateIngredient(idx, "kcal", Number(e.target.value) || 0)}
+                        placeholder="0"
+                        className="py-2 px-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm text-center"
+                      />
+                      {form.ingredients.length > 1 ? (
+                        <button type="button" onClick={() => removeIngredient(idx)} className="flex items-center justify-center p-2 text-muted-foreground hover:text-destructive">
                           <X className="w-4 h-4" />
                         </button>
-                      )}
+                      ) : <span />}
                     </div>
                   ))}
                 </div>
@@ -247,17 +294,17 @@ export function Admin() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm text-muted-foreground">Pasos de preparación</label>
-                  <button type="button" onClick={() => addListItem("steps")} className="text-xs text-primary hover:underline">+ Añadir</button>
+                  <button type="button" onClick={addStep} className="text-xs text-primary hover:underline">+ Añadir</button>
                 </div>
                 <div className="space-y-2">
                   {form.steps.map((step, idx) => (
                     <div key={idx} className="flex gap-2 items-start">
                       <span className="w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs flex-shrink-0 mt-2">{idx + 1}</span>
-                      <textarea value={step} onChange={(e) => updateListItem("steps", idx, e.target.value)}
+                      <textarea value={step} onChange={(e) => updateStep(idx, e.target.value)}
                         placeholder={`Paso ${idx + 1}`} rows={2}
                         className="flex-1 py-2 px-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary text-sm resize-none" />
                       {form.steps.length > 1 && (
-                        <button type="button" onClick={() => removeListItem("steps", idx)} className="p-2 text-muted-foreground hover:text-destructive mt-1">
+                        <button type="button" onClick={() => removeStep(idx)} className="p-2 text-muted-foreground hover:text-destructive mt-1">
                           <X className="w-4 h-4" />
                         </button>
                       )}

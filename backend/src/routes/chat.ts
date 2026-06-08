@@ -47,12 +47,22 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
         type: 'object',
         properties: {
           name: { type: 'string' },
-          calories: { type: 'number', description: 'Calorías por ración (kcal)' },
           time: { type: 'number', description: 'Minutos de preparación' },
           difficulty: { type: 'string', enum: ['Fácil', 'Media', 'Difícil'] },
           category: { type: 'string', enum: ['Desayuno', 'Comida', 'Cena', 'Snack'] },
           servings: { type: 'number' },
-          ingredients: { type: 'array', items: { type: 'string' }, description: 'Con cantidades, ej: "200g de pasta"' },
+          ingredients: {
+            type: 'array',
+            description: 'Lista de ingredientes con nombre y kcal estimadas. Las kcal son las calorías aportadas por ese ingrediente en la cantidad indicada.',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'Nombre con cantidad, ej: "200g de pechuga de pollo"' },
+                kcal: { type: 'number', description: 'Calorías aportadas por este ingrediente en la cantidad indicada' },
+              },
+              required: ['name', 'kcal'],
+            },
+          },
           steps: { type: 'array', items: { type: 'string' } },
         },
         required: ['name', 'ingredients', 'steps'],

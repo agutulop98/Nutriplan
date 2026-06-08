@@ -60,5 +60,19 @@ export async function migrate() {
       custom INTEGER DEFAULT 0
     );
   `);
+
+  // Add kcal column to recipe_ingredients for existing deployments
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'recipe_ingredients' AND column_name = 'kcal'
+      ) THEN
+        ALTER TABLE recipe_ingredients ADD COLUMN kcal INTEGER DEFAULT 0;
+      END IF;
+    END $$;
+  `);
+
   console.log('Tablas creadas correctamente');
 }

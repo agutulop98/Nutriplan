@@ -31,6 +31,11 @@ export interface User {
   email: string;
 }
 
+export interface Ingredient {
+  name: string;
+  kcal: number;
+}
+
 export interface Recipe {
   id: number;
   name: string;
@@ -40,7 +45,7 @@ export interface Recipe {
   difficulty: string | null;
   category: string | null;
   servings: number | null;
-  ingredients: string[];
+  ingredients: Ingredient[];
   steps: string[];
 }
 

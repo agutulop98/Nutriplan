@@ -144,6 +144,7 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       if (!msg.tool_calls?.length) { res.json({ message: msg.content }); return; }
 
       for (const tc of msg.tool_calls) {
+        if (tc.type !== 'function') continue;
         const result = await executeTool(tc.function.name, JSON.parse(tc.function.arguments));
         chat.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
       }

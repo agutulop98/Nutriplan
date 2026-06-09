@@ -9,3 +9,4 @@ backend/.env
 *.db-wal
 .vercel
 .env*
+k8s/secret.yaml

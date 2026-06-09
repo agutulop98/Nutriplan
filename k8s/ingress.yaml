@@ -17,3 +17,10 @@ spec:
                 name: nutriplan-backend
                 port:
                   number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nutriplan-frontend
+                port:
+                  number: 80
